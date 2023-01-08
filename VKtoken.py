@@ -1,7 +1,7 @@
 # import requests
 from pydantic import BaseModel
 from urllib.parse import urlparse, urlencode
-from my_token import token
+from config import token
 
 class DisplayTypes(BaseModel):
     page: str = "page"
