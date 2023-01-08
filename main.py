@@ -1,20 +1,15 @@
 import vk_api
 import requests
-import os
-import json
+import sqlalchemy
 from random import randrange
 from vk_api.longpoll import VkLongPoll, VkEventType
 from urllib.parse import urlparse, urlencode
-from config import token, group_token, token
-from database import add_my_data
+from config import token, group_token, token, userdb, passworddb
+from database import add_my_data, add_parthers_data
 # from vksearch import  user_search, write_msg
 # from keyboards import keyboard
 
-
-
-
 print("Бот создан")
-
 class Vkbot:
     BASE_URL = "https://api.vk.com/method"   #  наверно избыточно 
     METOD_USER_SEARCH = "users.search"       #
@@ -56,11 +51,10 @@ def username(user_id):   #  сбор информации о  пользоват
                 city = i.get('city')
                 user_sex = i.get('sex')
                 date_year = int(bdate[-4:])
-                print(user_id, first_name, last_name, date_year, city["title"], user_sex, relation)
-                add_my_data(user_id, first_name, last_name, date_year, city["title"], user_sex, relation)
-                return  relation, first_name, bdate, city, user_sex, wall_relation
+                # add_my_data(user_id, first_name, last_name, date_year, city["title"], user_sex, relation)
+                return  relation, first_name, last_name, date_year, city, user_sex, wall_relation                         #   Пересмотреть подход
     except KeyError:
-        write_msg(user_id, 'Ошибка получения токена, введите токен в переменную - my_token')
+        write_msg(user_id, 'Ошибка получения токена, введите токен в переменную - token')
 
 
 def user_search(SEX, BDATE, CITY, RELATION):
@@ -87,23 +81,12 @@ def user_search(SEX, BDATE, CITY, RELATION):
                 last_name = person_dict.get('last_name')
                 vk_id = str(person_dict.get('id'))
                 vk_link = 'vk.com/id' + str(person_dict.get('id'))
-                
-                Vkbot.LIST_USERS.append({first_name, last_name, vk_id, vk_link}) 
+                add_parthers_data(first_name, last_name, vk_id, vk_link, Vkbot.USER_ID)
+                # Vkbot.LIST_USERS.append({first_name, last_name, vk_id, vk_link}) 
             else:
                 continue
-            
-        #    блок временный
-            # resul = Vkbot.LIST_USERS.json()
-            # if os.path.exists(f"{filename}"):
-            #     print(f"Директория существует")
-            # else:
-            #     os.mkdir(filename)
-            # with open(f"{filename}/{filename}.json", "w", encoding="utf-8") as file:
-            #     json.dump(resul, file, indent=4, ensure_ascii=False)  #  resp_json    временно, для проверки записи в файл
-
-        #  
-            # print(first_name," ",last_name," ",vk_id," ",vk_link)                    
-        print(Vkbot.LIST_USERS)
+               
+        # print(Vkbot.LIST_USERS)
         return f'Поиск завершён'
         
     except KeyError:
@@ -132,7 +115,7 @@ def get_sex(sex_user):
 
 def get_foto_users(users_id):
     url = 'https://api.vk.com/method/photos.getAll'
-    params = {'access_token': token_foto,
+    params = {'access_token': token,
                 'type': 'album',
                 'owner_id': users_id,
                 'extended': 1,
@@ -218,18 +201,20 @@ for event in Vkbot.longpoll.listen():
         request = event.text.lower()
         user_id = str(event.user_id)
         msg = event.text.lower()
-        Vkbot.RELATION, myname, bdate, Vkbot.CITY, Vkbot.SEX, wall_relation = username(user_id)
+        Vkbot.RELATION, first_name, last_name, Vkbot.BDATE, Vkbot.CITY, Vkbot.SEX, wall_relation = username(user_id)
         Vkbot.USER_ID = user_id
+      
         offset = 0
         if request == "привет":
-            write_msg(user_id, f"Здравствуйте, {myname}, добро пожаловать в бот \n  для поиска наберите: start")       
+            write_msg(user_id, f"Здравствуйте, {first_name}, добро пожаловать в бот \n  для поиска наберите: start")       
         elif request == "start":
             if wall_relation == True:
                 write_msg(user_id, "Ваша страница закрыта")
             else:
-                if bdate:
-                    Vkbot.BDATE = int(bdate[-4:])   #  вывод года (1900) из полной даты (01.01.1900)
-                write_msg(user_id, f"Отлично. давайте подберем для Вас пару. \n Ваш год рождения, {Vkbot.BDATE}")
+                # if bdate = None
+                    
+                #     #   Vkbot.BDATE = int(bdate[-4:])   #  вывод года (1900) из полной даты (01.01.1900)
+                # write_msg(user_id, f"Отлично. давайте подберем для Вас пару. \n Ваш год рождения, {Vkbot.BDATE}")
                 if Vkbot.CITY == None:
                     write_msg(user_id, "В вашем пофиле не указан город, \n заполните профиль и попробуйте еще раз")
                     break
@@ -240,8 +225,8 @@ for event in Vkbot.longpoll.listen():
                         sex,find_sex = "женщину",1
                     city_id, city = Vkbot.CITY["id"], Vkbot.CITY["title"]
                     write_msg(user_id, f"Ищем в г.,{city}, {sex}") 
-                    print(Vkbot.LIST_USERS)
-                    #first_name, last_name, vk_id, vk_link =  
+                    print(user_id, first_name, last_name, Vkbot.BDATE, city, Vkbot.SEX, Vkbot.RELATION)   #  врременно
+                    add_my_data(user_id, first_name, last_name, Vkbot.BDATE, city, Vkbot.SEX, Vkbot.RELATION)               
                     user_search(Vkbot.SEX,Vkbot.BDATE,city_id,Vkbot.RELATION)
                     # foto = get_foto_users(vk_id)
                     # write_msg(user_id, f"Вот что нашлось:  {first_name}, {last_name}, {vk_link}")    
@@ -249,14 +234,15 @@ for event in Vkbot.longpoll.listen():
         elif request == "next":
             offset += 1
             # first_name, last_name, vk_id, vk_link =  user_search(Vkbot.SEX,Vkbot.BDATE,city_id,Vkbot.RELATION)
-            # foto = get_foto_users(vk_id)
+            foto = get_foto_users(vk_id)
             # write_msg(user_id, f"Вот что нашлось:  {first_name} ,{last_name} , {vk_id} , {vk_link}, {foto}")    
             # send_photo_1(user_id, "Первое фото", offset)
 
         elif request == "stop":
-            write_msg(event.user_id, f"До свидания, {myname}")
+            write_msg(user_id, f"До свидания, {first_name}")
+            
             break
         else:
-            Vkbot.RELATION, myname, bdate, Vkbot.CITY, Vkbot.SEX, wall_relation = username(user_id)
-            Vkbot.USER_ID = user_id
-            write_msg(user_id, f"Здравствуйте, {myname}, добро пожаловать в бот \n  для поиска наберите start.")  
+            # Vkbot.RELATION, myname, bdate, Vkbot.CITY, Vkbot.SEX, wall_relation = username(user_id)
+            # Vkbot.USER_ID = user_id
+            write_msg(user_id, f"Здравствуйте, {first_name}, добро пожаловать в бот \n  для поиска наберите start.")  
