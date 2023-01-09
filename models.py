@@ -52,7 +52,7 @@ class User(Base):
         return f'{self.id}, ({self.id_vk},{self.first_name},{self.last_name})'
 
 def create_tables(engine):
-    # Base.metadata.drop_all(engine)   ###  Убрать !
+    Base.metadata.drop_all(engine)   ###  Убрать !
     Base.metadata.create_all(engine)
 
 def drop_tables(engine):
